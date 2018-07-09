@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_marginStart="@dimen/margin_small">
+
+    <android.support.constraint.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <EditText
+            android:id="@+id/edit_todo_item_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/margin_large"
+            android:layout_marginTop="@dimen/margin_average"
+            android:hint="@string/edit_title"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+        </EditText>
+
+        <EditText
+            android:id="@+id/edit_todo_item_description"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/margin_large"
+            android:layout_marginTop="@dimen/margin_average"
+            android:lines="3"
+            android:hint="@string/edit_description"
+            app:layout_constraintTop_toBottomOf="@id/edit_todo_item_title"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+        </EditText>
+
+        <TextView
+            android:id="@+id/text_todo_item_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/margin_large"
+            android:textSize="25sp"
+            android:text="09/06/18 10:10"
+            app:layout_constraintTop_toBottomOf="@id/edit_todo_item_description"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+        </TextView>
+
+        <CheckBox
+            android:id="@+id/check_todo_item_reminder"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/margin_average"
+            android:textSize="22sp"
+            android:text="@string/check_reminder"
+            app:layout_constraintTop_toBottomOf="@id/text_todo_item_date"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+        </CheckBox>
+
+        <CheckBox
+            android:id="@+id/check_todo_item_repeat"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/margin_average"
+            android:textSize="22sp"
+            android:text="@string/check_repeat"
+            app:layout_constraintTop_toBottomOf="@id/check_todo_item_reminder"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+        </CheckBox>
+
+        <RadioGroup
+            android:id="@+id/radio_todo_item"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/margin_normal"
+            android:visibility="gone"
+            app:layout_goneMarginTop="@dimen/margin_normal"
+            app:layout_constraintTop_toBottomOf="@id/check_todo_item_repeat"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <RadioButton
+                android:id="@+id/radio_todo_item_daily"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/radio_daily">
+            </RadioButton>
+
+            <RadioButton
+                android:id="@+id/radio_todo_item_weekly"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/radio_weekly">
+            </RadioButton>
+
+            <RadioButton
+                android:id="@+id/radio_todo_item_monthly"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/radio_monthly">
+            </RadioButton>
+
+        </RadioGroup>
+
+        <ImageView
+            android:id="@+id/image_todo_item_priority_up"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/margin_average"
+            android:adjustViewBounds="true"
+            android:src="@drawable/ic_arrow_drop_up_black_24dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toEndOf="@+id/text_todo_item_priority_number"
+            app:layout_constraintTop_toBottomOf="@+id/radio_todo_item"
+            app:layout_constraintVertical_bias="1.0">
+        </ImageView>
+
+        <TextView
+            android:id="@+id/text_todo_item_priority"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/margin_normal"
+            android:text="@string/text_priority"
+            android:textSize="22sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/radio_todo_item"
+            app:layout_constraintVertical_bias="0.203">
+        </TextView>
+
+        <TextView
+            android:id="@+id/text_todo_item_priority_number"
+            android:layout_width="18dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/margin_average"
+            android:layout_marginTop="@dimen/margin_normal"
+            android:text="@string/text_priority_number"
+            android:textSize="22sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/text_todo_item_priority"
+            app:layout_constraintTop_toBottomOf="@+id/radio_todo_item"
+            app:layout_constraintVertical_bias="0.2">
+        </TextView>
+
+        <ImageView
+            android:id="@+id/image_todo_item_priority_down"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:adjustViewBounds="true"
+            android:src="@drawable/ic_arrow_drop_down_black_24dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintTop_toBottomOf="@id/image_todo_item_priority_up"
+            app:layout_constraintStart_toEndOf="@+id/text_todo_item_priority_number"
+            app:layout_constraintVertical_bias="1.0">
+        </ImageView>
+
+    </android.support.constraint.ConstraintLayout>
+
+</ScrollView>

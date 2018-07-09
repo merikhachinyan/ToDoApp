@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">TodoApp</string>
+
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="edit_title">Title</string>
+    <string name="edit_description">Description</string>
+    <string name="text_date">Date</string>
+    <string name="check_reminder">Reminder</string>
+    <string name="check_repeat">Repeat</string>
+    <string name="radio_daily">Daily</string>
+    <string name="radio_weekly">Weekly</string>
+    <string name="radio_monthly">Monthly</string>
+    <string name="text_priority">Priority</string>
+    <string name="text_priority_number">0</string>
+</resources>
