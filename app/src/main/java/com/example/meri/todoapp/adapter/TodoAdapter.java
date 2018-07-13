@@ -20,15 +20,15 @@ import java.util.Locale;
 
 public class TodoAdapter extends RecyclerView.Adapter<TodoViewHolder> {
 
-    private static List<TodoItem>  mTodoList = new ArrayList<>();
+    private List<TodoItem> mTodoList;
+    private SparseBooleanArray mSelectedItems;
 
     private OnAdapterItemsListener mOnAdapterItemsListener;
 
-    private SparseBooleanArray mSelectedItems;
-
-    static int count = 0;
+    private static int count = 0;
 
     public TodoAdapter() {
+        mTodoList = new ArrayList<>();
         mSelectedItems = new SparseBooleanArray();
     }
 
@@ -53,7 +53,7 @@ public class TodoAdapter extends RecyclerView.Adapter<TodoViewHolder> {
 
         holder.getDate().setText(dateFormat().format(calendar.getTime()));
 
-        if(TodoListFragment.isSelected){
+        if (TodoListFragment.isSelected) {
             holder.getSelection().setVisibility(View.VISIBLE);
             holder.getSelection().setChecked(mSelectedItems.get(holder.getAdapterPosition()));
         } else {
@@ -66,8 +66,8 @@ public class TodoAdapter extends RecyclerView.Adapter<TodoViewHolder> {
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                TodoItem todo = mTodoList.get(holder.getAdapterPosition());
-                mOnAdapterItemsListener.onOpenItem(todo, holder.getAdapterPosition());
+                long id = mTodoList.get(holder.getAdapterPosition()).getId();
+                mOnAdapterItemsListener.onOpenItem(id);
             }
         });
 
@@ -79,7 +79,7 @@ public class TodoAdapter extends RecyclerView.Adapter<TodoViewHolder> {
                         mSelectedItems.put(holder.getAdapterPosition(),
                                 holder.getSelection().isChecked());
 
-                        if(count != 0){
+                        if (count != 0) {
                             mOnAdapterItemsListener.onCheckBoxClick();
                         }
                         count++;
@@ -98,17 +98,11 @@ public class TodoAdapter extends RecyclerView.Adapter<TodoViewHolder> {
             }
         });
 
-//        holder.getDeleteItem().setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                mOnDeleteItemListener.onDeleteItem(holder.getAdapterPosition());
-//            }
-//        });
-
         holder.getMore().setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mOnAdapterItemsListener.onPopupMenuClick(view, holder.getAdapterPosition());
+                long id = mTodoList.get(holder.getAdapterPosition()).getId();
+                mOnAdapterItemsListener.onPopupMenuClick(view, id);
             }
         });
     }
@@ -116,6 +110,19 @@ public class TodoAdapter extends RecyclerView.Adapter<TodoViewHolder> {
     @Override
     public int getItemCount() {
         return mTodoList.size();
+    }
+
+    public void createTodoList(List<TodoItem> todoItems){
+        mTodoList.addAll(todoItems);
+        notifyDataSetChanged();
+    }
+
+    public void addTodoItem(TodoItem todoItem){
+        mTodoList.add(todoItem);
+    }
+
+    public void clearList(){
+        mTodoList.clear();
     }
 
     private SimpleDateFormat dateFormat(){
@@ -139,7 +146,7 @@ public class TodoAdapter extends RecyclerView.Adapter<TodoViewHolder> {
         int count = 0;
 
         for (int i = 0; i < getSelectedItemsCount(); i++){
-            if(mSelectedItems.valueAt(i) == true){
+            if(mSelectedItems.valueAt(i)){
                 count++;
             }
         }
@@ -150,46 +157,29 @@ public class TodoAdapter extends RecyclerView.Adapter<TodoViewHolder> {
         return mSelectedItems.size();
     }
 
-    public void addTodoItem(TodoItem todoItem){
-        mTodoList.add(todoItem);
+    public void clearSelection() {
+        mSelectedItems.clear();
     }
 
+    public List<Long> getSelectedItemsId(){
+        List<Long> idList = new ArrayList<>();
 
-    List<TodoItem> list = new ArrayList<>();
-
-    public void removeTodoItems() {
-        list.clear();
-        for (int i = 0; i < mSelectedItems.size(); i++) {
-            if (!mSelectedItems.valueAt(i)) {
-                list.add(mTodoList.get(mSelectedItems.keyAt(i)));
+        for (int i = 0; i < mSelectedItems.size(); i++){
+            if(mSelectedItems.valueAt(i)){
+                idList.add(mTodoList.get(mSelectedItems.keyAt(i)).getId());
             }
         }
-        mTodoList.clear();
-        mTodoList = list;
-        notifyDataSetChanged();
-    }
-
-    public void setTodoItem(TodoItem todoItem, int position){
-        mTodoList.set(position, todoItem);
-    }
-
-    public void removeItem(int position){
-        mTodoList.remove(position);
+        return idList;
     }
 
     public interface OnAdapterItemsListener{
         void onItemLongClick(View view, int position, boolean isChecked);
-        void onPopupMenuClick(View view, int position);
-        void onOpenItem(TodoItem todoItem, int position);
-        //        void onDeleteItem(int position);
+        void onPopupMenuClick(View view, long id);
+        void onOpenItem(long id);
         void onCheckBoxClick();
     }
 
     public void setOnAdapterItemsListener(OnAdapterItemsListener adapterItemsListener){
         mOnAdapterItemsListener = adapterItemsListener;
-    }
-
-    public void clearSelection() {
-        mSelectedItems.clear();
     }
 }

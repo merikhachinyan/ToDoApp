@@ -4,7 +4,10 @@ package com.example.meri.todoapp.fragments;
 import android.app.DatePickerDialog;
 import android.app.Fragment;
 import android.app.TimePickerDialog;
+import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.Context;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -25,8 +28,11 @@ import android.widget.TimePicker;
 import android.widget.Toast;
 
 import com.example.meri.todoapp.R;
+import com.example.meri.todoapp.db.DbManager;
+import com.example.meri.todoapp.db.TodoItemContract;
 import com.example.meri.todoapp.helper.ViewHelper;
 import com.example.meri.todoapp.item.TodoItem;
+import com.example.meri.todoapp.provider.TodoItemsProvider;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -38,7 +44,11 @@ public class TodoItemFragment extends Fragment implements View.OnClickListener{
     private final String EMPTY_TITLE = "Title is empty";
     private final String EMPTY_DESCRIPTION = "Description is empty";
 
-    private static final String ITEM = "Todo";
+    private static final String ID = "Position";
+    private static final String START_EDIT = "EDIT";
+
+    private boolean isOpenedForEdit = false;
+    private long mEditedItemId;
 
     private final int SAVE_MODE = 0;
     private final int EDIT_MODE = 1;
@@ -80,14 +90,17 @@ public class TodoItemFragment extends Fragment implements View.OnClickListener{
     private TodoItem mTodoItem;
     private OnFragmentActionListener mOnActionSave;
 
+    private DbManager mDbManager;
+
     public TodoItemFragment() {
     }
 
-    public static TodoItemFragment newInstance(TodoItem todoItem){
+    public static TodoItemFragment newInstance(long id, boolean isOpenedForEdit){
         TodoItemFragment todoItemFragment = new TodoItemFragment();
 
         Bundle args = new Bundle();
-        args.putSerializable(ITEM, todoItem);
+        args.putLong(ID, id);
+        args.putBoolean(START_EDIT, isOpenedForEdit);
         todoItemFragment.setArguments(args);
 
         return todoItemFragment;
@@ -110,9 +123,7 @@ public class TodoItemFragment extends Fragment implements View.OnClickListener{
         super.onViewCreated(view, savedInstanceState);
 
         setListeners();
-
         getData();
-
     }
 
     @Override
@@ -147,12 +158,13 @@ public class TodoItemFragment extends Fragment implements View.OnClickListener{
     }
 
     private void getData(){
-        mTodoItem = null;
         if(getArguments() != null){
-            mTodoItem = (TodoItem)getArguments().getSerializable(ITEM);
-            if(mTodoItem == null){
+            isOpenedForEdit = getArguments().getBoolean(START_EDIT);
+            if(!isOpenedForEdit){
                 enable();
             } else {
+                mEditedItemId = getArguments().getLong(ID);
+                //mTodoItem = mDbManager.getTodoItemById(mEditedItemId);
                 disable();
                 getItemValues(mTodoItem);
                 setViewValues();
@@ -172,15 +184,11 @@ public class TodoItemFragment extends Fragment implements View.OnClickListener{
                         false).show();
                 break;
             case R.id.image_todo_item_priority_up:
-                if(mPriorityNumber < 5){
-                    mPriorityNumber++;
-                }
+                increasePriority();
                 ViewHelper.setViewNumber(mTextPriorityNumber, mPriorityNumber);
                 break;
             case R.id.image_todo_item_priority_down:
-                if(mPriorityNumber > 0){
-                    mPriorityNumber--;
-                }
+                decreasePriority();
                 ViewHelper.setViewNumber(mTextPriorityNumber, mPriorityNumber);
                 break;
             case R.id.check_todo_item_repeat:
@@ -217,7 +225,9 @@ public class TodoItemFragment extends Fragment implements View.OnClickListener{
         mRadioGroup = view.findViewById(R.id.radio_todo_item);
         mRadioDaily = view.findViewById(R.id.radio_todo_item_daily);
         mRadioWeekly = view.findViewById(R.id.radio_todo_item_weekly);
-        mRadioMonthly = view.findViewById(R.id.radio_todo_item_weekly);
+        mRadioMonthly = view.findViewById(R.id.radio_todo_item_monthly);
+
+        mDbManager = new DbManager(getActivity());
     }
 
     private void setListeners(){
@@ -250,16 +260,7 @@ public class TodoItemFragment extends Fragment implements View.OnClickListener{
         };
     }
 
-    private void setDate(){
-        String dateFormat = "MM/dd/yy hh:mm";
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(
-                dateFormat, Locale.US);
-
-        ViewHelper.setTextViewValue(mTextViewDate, simpleDateFormat
-                .format(mCalendar.getTime()));
-    }
-
-    private void saveData() {
+    private void getDataFromViews(){
         mTitle = ViewHelper.getEditTextValue(mEditTextTitle);
         mDescription = ViewHelper.getEditTextValue(mEditTextDescription);
         mDate = mCalendar.getTime();
@@ -268,6 +269,10 @@ public class TodoItemFragment extends Fragment implements View.OnClickListener{
         isCheckedRepeat = ViewHelper.getCheckBox(mCheckRepeat);
 
         mCheckedRadioButtonId = ViewHelper.getRadioButtonId(mRadioGroup);
+    }
+
+    private void saveData() {
+        getDataFromViews();
 
         if (isEmpty(mTitle)) {
             Toast.makeText(getActivity(), EMPTY_TITLE, Toast.
@@ -277,11 +282,34 @@ public class TodoItemFragment extends Fragment implements View.OnClickListener{
                 Toast.makeText(getActivity(), EMPTY_DESCRIPTION, Toast.
                         LENGTH_SHORT).show();
             } else {
-                mTodoItem = new TodoItem(mTitle, mDescription, mCalendar.getTimeInMillis(),
-                        isCheckedReminder, isCheckedRepeat, mCheckedRadioButtonId, mPriorityNumber);
-
-                mOnActionSave.OnItemSave(mTodoItem);
+                if(isOpenedForEdit){
+                    updateDb();
+                } else {
+                    insertToDb();
+                }
+                mOnActionSave.OnItemSave();
             }
+        }
+    }
+
+    private void setDate(){
+        String dateFormat = "MM/dd/yy hh:mm";
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(
+                dateFormat, Locale.US);
+
+        ViewHelper.setTextViewValue(mTextViewDate, simpleDateFormat
+                .format(mCalendar.getTime()));
+    }
+
+    private void increasePriority(){
+        if(mPriorityNumber < 5){
+            mPriorityNumber++;
+        }
+    }
+
+    private void decreasePriority(){
+        if(mPriorityNumber > 0){
+            mPriorityNumber--;
         }
     }
 
@@ -356,11 +384,55 @@ public class TodoItemFragment extends Fragment implements View.OnClickListener{
         }
     }
 
+    private void updateDb(){
+        String selection = TodoItemContract.TodoEntry._ID + "=?";
+        String[] selectionArgs = {String.valueOf(mEditedItemId)};
+
+        mTodoItem = new TodoItem(mEditedItemId, mTitle, mDescription, mCalendar.getTimeInMillis(),
+                isCheckedReminder, isCheckedRepeat, mCheckedRadioButtonId, mPriorityNumber);
+
+        ContentValues cv = new ContentValues();
+        cv.put(TodoItemContract.TodoEntry.TITLE, mTodoItem.getTitle());
+        cv.put(TodoItemContract.TodoEntry.DESCRIPTION, mTodoItem.getDescription());
+        cv.put(TodoItemContract.TodoEntry.DATE, mTodoItem.getDate());
+        cv.put(TodoItemContract.TodoEntry.REMINDER, mTodoItem.isCheckedReminder());
+        cv.put(TodoItemContract.TodoEntry.REPEAT, mTodoItem.isCheckedRepeat());
+        cv.put(TodoItemContract.TodoEntry.REPEAT_PERIOD, mTodoItem.getCheckedRadioId());
+        cv.put(TodoItemContract.TodoEntry.PRIORITY, mTodoItem.getPriority());
+
+        Uri uri = ContentUris.withAppendedId(Uri.parse(TodoItemsProvider.CONTENT_URI_TODO_ITEM),
+                mEditedItemId);
+
+        getActivity().getContentResolver().update(uri, cv, selection, selectionArgs);
+
+        //mDbManager.updateTodoItem(mEditedItemId, mTodoItem);
+    }
+
+    private void insertToDb(){
+        int id = 0;
+        mTodoItem = new TodoItem(id, mTitle, mDescription, mCalendar.getTimeInMillis(),
+                isCheckedReminder, isCheckedRepeat, mCheckedRadioButtonId, mPriorityNumber);
+
+        ContentValues cv = new ContentValues();
+        cv.put(TodoItemContract.TodoEntry.TITLE, mTodoItem.getTitle());
+        cv.put(TodoItemContract.TodoEntry.DESCRIPTION, mTodoItem.getDescription());
+        cv.put(TodoItemContract.TodoEntry.DATE, mTodoItem.getDate());
+        cv.put(TodoItemContract.TodoEntry.REMINDER, mTodoItem.isCheckedReminder());
+        cv.put(TodoItemContract.TodoEntry.REPEAT, mTodoItem.isCheckedRepeat());
+        cv.put(TodoItemContract.TodoEntry.REPEAT_PERIOD, mTodoItem.getCheckedRadioId());
+        cv.put(TodoItemContract.TodoEntry.PRIORITY, mTodoItem.getPriority());
+
+        //mDbManager.insertTodoItem(mTodoItem);
+
+        getActivity().getContentResolver()
+                .insert(Uri.parse(TodoItemsProvider.CONTENT_URI_TODO_ITEMS), cv);
+    }
+
     public void setOnActionListener(OnFragmentActionListener onActionSave){
         mOnActionSave = onActionSave;
     }
 
     public interface OnFragmentActionListener{
-        void OnItemSave(TodoItem todoItem);
+        void OnItemSave();
     }
 }

@@ -4,8 +4,11 @@ package com.example.meri.todoapp.fragments;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.Fragment;
+import android.content.ContentUris;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -21,10 +24,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.PopupMenu;
+import android.widget.Toast;
 
 import com.example.meri.todoapp.R;
 import com.example.meri.todoapp.adapter.TodoAdapter;
+import com.example.meri.todoapp.db.TodoItemContract;
 import com.example.meri.todoapp.item.TodoItem;
+import com.example.meri.todoapp.provider.TodoItemsProvider;
+
+import java.util.List;
 
 public class TodoListFragment extends Fragment implements View.OnClickListener{
 
@@ -37,6 +45,8 @@ public class TodoListFragment extends Fragment implements View.OnClickListener{
     private RecyclerView mRecyclerView;
     private TodoAdapter mTodoAdapter;
     private ActionMode mActionMode;
+
+//    private DbManager mDbManager;
 
     private OnFragmentActionListener mOnActionOpen;
 
@@ -64,11 +74,11 @@ public class TodoListFragment extends Fragment implements View.OnClickListener{
             switch(menuItem.getItemId()){
                 case R.id.delete:
                     isSelected = false;
-                    mTodoAdapter.removeTodoItems();
-                    mTodoAdapter.removeSelection();
-                    mTodoAdapter.notifyDataSetChanged();
-                    mActionMode.finish();
-                    mActionMode = null;
+                    removeSelectedItems();
+                    changeAdapterItems();
+                    clearSelection();
+                    finishActionMode();
+                    
                     return true;
                 default:
                     return false;
@@ -94,6 +104,7 @@ public class TodoListFragment extends Fragment implements View.OnClickListener{
                     if(mActionMode == null){
                         mActionMode = getActivity().startActionMode(mActionModeCallback);
                         ((CheckBox) view).setChecked(isChecked);
+
                         isSelected = true;
                         mActionMode.setTitle(String.valueOf(mTodoAdapter.getCheckedItemsCount()) +
                                 SELECTED_ITEMS);
@@ -102,14 +113,14 @@ public class TodoListFragment extends Fragment implements View.OnClickListener{
                 }
 
                 @Override
-                public void onPopupMenuClick(View view, final int position) {
+                public void onPopupMenuClick(View view, final long id) {
                     PopupMenu popup = new PopupMenu(getActivity(), view);
                     popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                         @Override
                         public boolean onMenuItemClick(MenuItem menuItem) {
                             switch (menuItem.getItemId()){
                                 case R.id.popup_delete:
-                                    openDialog(position).show();
+                                    openDialog(id).show();
                                     return true;
                                 default:
                                     return false;
@@ -130,8 +141,8 @@ public class TodoListFragment extends Fragment implements View.OnClickListener{
                 }
 
                 @Override
-                public void onOpenItem(TodoItem todoItem, int position){
-                    mOnActionOpen.onItemClick(todoItem, position);
+                public void onOpenItem(long id){
+                    mOnActionOpen.onItemClick(id);
                 }
 
             };
@@ -148,6 +159,7 @@ public class TodoListFragment extends Fragment implements View.OnClickListener{
 
         init(view);
         setListeners();
+
     }
 
     @Override
@@ -173,13 +185,22 @@ public class TodoListFragment extends Fragment implements View.OnClickListener{
         }
     }
 
-    private Dialog openDialog(final int position){
+    private Dialog openDialog(final long id){
         final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         builder.setMessage(DIALOG_MESSAGE)
                 .setPositiveButton(DIALOG_ACCEPT, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
-                        removeTodoItem(position);
+                        //mDbManager.deleteTodoItem(id);
+
+                        String selection = TodoItemContract.TodoEntry._ID + "=?";
+                        String[] selectionArgs = {Long.toString(id)};
+                        Uri uri = ContentUris.withAppendedId(Uri
+                                .parse(TodoItemsProvider.CONTENT_URI_TODO_ITEM), id);
+
+                        getActivity().getContentResolver()
+                                .delete(uri, selection, selectionArgs);
+                        changeAdapterItems();
                     }
                 })
                 .setNegativeButton(DIALOG_REJECT, new DialogInterface.OnClickListener() {
@@ -200,7 +221,38 @@ public class TodoListFragment extends Fragment implements View.OnClickListener{
                 new LinearLayoutManager(getActivity());
         mRecyclerView.setLayoutManager(mLayoutManager);
 
+        //mDbManager = new DbManager(getActivity());
+        //mTodoAdapter.createTodoList(mDbManager.getTodoItems());
+
+        Cursor cursor = getActivity().getContentResolver()
+                .query(Uri.parse(TodoItemsProvider.CONTENT_URI_TODO_ITEMS),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null);
+
         mTodoAdapter = new TodoAdapter();
+
+        if(cursor != null){
+            while (cursor.moveToNext()) {
+
+                long mId = cursor.getLong(cursor.getColumnIndex(TodoItemContract.TodoEntry._ID));
+                String title = cursor.getString(cursor.getColumnIndex(TodoItemContract.TodoEntry.TITLE));
+                String description = cursor.getString(cursor.getColumnIndex(TodoItemContract.TodoEntry.DESCRIPTION));
+                long date = cursor.getLong(cursor.getColumnIndex(TodoItemContract.TodoEntry.DATE));
+                boolean isCheckedReminder = cursor.getInt(cursor.getColumnIndex(TodoItemContract.TodoEntry.REMINDER)) > 0;
+                boolean isCheckedRepeat = cursor.getInt(cursor.getColumnIndex(TodoItemContract.TodoEntry.REPEAT)) > 0;
+                int repeatPeriod = cursor.getInt(cursor.getColumnIndex(TodoItemContract.TodoEntry.REPEAT_PERIOD));
+                int priority = cursor.getInt(cursor.getColumnIndex(TodoItemContract.TodoEntry.PRIORITY));
+
+                mTodoAdapter.addTodoItem(new TodoItem(mId, title, description, date, isCheckedReminder, isCheckedRepeat,
+                        repeatPeriod, priority));
+                mTodoAdapter.notifyDataSetChanged();
+            }
+        }
+        cursor.close();
+
         mRecyclerView.setAdapter(mTodoAdapter);
     }
 
@@ -209,19 +261,62 @@ public class TodoListFragment extends Fragment implements View.OnClickListener{
         mTodoAdapter.setOnAdapterItemsListener(mOnAdapterItemsListener);
     }
 
-    public void addTodoItem(TodoItem item){
-        mTodoAdapter.addTodoItem(item);
-        mTodoAdapter.notifyDataSetChanged();
+    private void removeSelectedItems(){
+        List<Long> idList = mTodoAdapter.getSelectedItemsId();
+        for (int i = 0; i < idList.size(); i++){
+            String selection = TodoItemContract.TodoEntry._ID + "=?";
+            String[] selectionArgs = {Long.toString(idList.get(i))};
+            //mDbManager.deleteTodoItem(idList.get(i));
+            Uri uri = ContentUris.withAppendedId(Uri
+                    .parse(TodoItemsProvider.CONTENT_URI_TODO_ITEM), idList.get(i));
+
+            getActivity().getContentResolver()
+                    .delete(uri, selection, selectionArgs);
+        }
     }
 
-    public void setTodoItem(TodoItem item, int position){
-        mTodoAdapter.setTodoItem(item, position);
+    private void changeAdapterItems(){
+        mTodoAdapter.clearList();
+
+        Cursor cursor = getActivity().getContentResolver()
+                .query(Uri.parse(TodoItemsProvider.CONTENT_URI_TODO_ITEMS),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null);
+
+        if(cursor != null){
+            while (cursor.moveToNext()) {
+
+                long mId = cursor.getLong(cursor.getColumnIndex(TodoItemContract.TodoEntry._ID));
+                String title = cursor.getString(cursor.getColumnIndex(TodoItemContract.TodoEntry.TITLE));
+                String description = cursor.getString(cursor.getColumnIndex(TodoItemContract.TodoEntry.DESCRIPTION));
+                long date = cursor.getLong(cursor.getColumnIndex(TodoItemContract.TodoEntry.DATE));
+                boolean isCheckedReminder = cursor.getInt(cursor.getColumnIndex(TodoItemContract.TodoEntry.REMINDER)) > 0;
+                boolean isCheckedRepeat = cursor.getInt(cursor.getColumnIndex(TodoItemContract.TodoEntry.REPEAT)) > 0;
+                int repeatPeriod = cursor.getInt(cursor.getColumnIndex(TodoItemContract.TodoEntry.REPEAT_PERIOD));
+                int priority = cursor.getInt(cursor.getColumnIndex(TodoItemContract.TodoEntry.PRIORITY));
+
+                mTodoAdapter.addTodoItem(new TodoItem(mId, title, description, date, isCheckedReminder, isCheckedRepeat,
+                        repeatPeriod, priority));
+                mTodoAdapter.notifyDataSetChanged();
+            }
+        }
+        cursor.close();
+
+//        mTodoAdapter.createTodoList();
+//        mTodoAdapter.createTodoList(mDbManager.getTodoItems());
+    }
+    
+    private void clearSelection(){
+        mTodoAdapter.removeSelection();
         mTodoAdapter.notifyDataSetChanged();
     }
-
-    private void removeTodoItem(int position){
-        mTodoAdapter.removeItem(position);
-        mTodoAdapter.notifyDataSetChanged();
+    
+    private void finishActionMode(){
+        mActionMode.finish();
+        mActionMode = null;
     }
 
     public void setOnActionListener(OnFragmentActionListener onActionOpen){
@@ -230,7 +325,6 @@ public class TodoListFragment extends Fragment implements View.OnClickListener{
 
     public interface OnFragmentActionListener{
         void onAddClick();
-        void onItemClick(TodoItem todoItem, int position);
+        void onItemClick(long id);
     }
 }
-

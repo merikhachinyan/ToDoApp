@@ -7,7 +7,6 @@ import android.os.Bundle;
 
 import com.example.meri.todoapp.fragments.TodoItemFragment;
 import com.example.meri.todoapp.fragments.TodoListFragment;
-import com.example.meri.todoapp.item.TodoItem;
 
 public class MainActivity extends AppCompatActivity
         implements TodoListFragment.OnFragmentActionListener,
@@ -17,8 +16,6 @@ public class MainActivity extends AppCompatActivity
     private final String TODO_LIST_TAG = "Items List";
 
     private boolean isEdited = false;
-
-    private int itemPosition;
 
     private TodoListFragment mTodoListFragment;
     private TodoItemFragment mTodoItemFragment;
@@ -45,19 +42,14 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void OnItemSave(TodoItem todoItem) {
-        if(isEdited){
-            mTodoListFragment.setTodoItem(todoItem, itemPosition);
-        } else {
-            mTodoListFragment.addTodoItem(todoItem);
-        }
+    public void OnItemSave() {
         getFragmentManager().popBackStack();
     }
 
     @Override
     public void onAddClick() {
         isEdited = false;
-        mTodoItemFragment = TodoItemFragment.newInstance(null);
+        mTodoItemFragment = TodoItemFragment.newInstance(0, isEdited);
 
         mFragmentManager = getFragmentManager();
         mFragmentTransaction = mFragmentManager.beginTransaction();
@@ -67,11 +59,10 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onItemClick(TodoItem todoItem, int position){
-        itemPosition = position;
+    public void onItemClick(long id){
         isEdited = true;
 
-        mTodoItemFragment = TodoItemFragment.newInstance(todoItem);
+        mTodoItemFragment = TodoItemFragment.newInstance(id, isEdited);
 
         mFragmentManager = getFragmentManager();
         mFragmentTransaction = mFragmentManager.beginTransaction();

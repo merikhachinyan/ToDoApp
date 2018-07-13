@@ -16,6 +16,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-    </application>
 
+        <provider
+            android:authorities="com.aca.content.todo.app"
+            android:name=".provider.TodoItemsProvider">
+        </provider>
+
+    </application>
 </manifest>

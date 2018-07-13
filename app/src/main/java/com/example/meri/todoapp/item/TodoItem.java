@@ -4,6 +4,7 @@ import java.io.Serializable;
 
 public class TodoItem implements Serializable{
 
+    private long id;
     private String title;
     private String description;
     private long date;
@@ -14,10 +15,11 @@ public class TodoItem implements Serializable{
     private int checkedRadioId;
     private int priority;
 
-    public TodoItem(String title, String description, long date,
+    public TodoItem(long id, String title, String description, long date,
                     boolean isCheckedReminder, boolean isCheckedRepeat,
                     int checkedRadioId, int priority){
 
+        this.id = id;
         this.title = title;
         this.description = description;
         this.date = date;
@@ -77,6 +79,10 @@ public class TodoItem implements Serializable{
 
     public void setCheckedRadioId(int checkedRadioId) {
         this.checkedRadioId = checkedRadioId;
+    }
+
+    public long getId() {
+        return id;
     }
 
     public void setPriority(int priority) {
